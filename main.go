@@ -89,7 +89,7 @@ func (a *AppCtx) GetRedisKeyType() *AppCtx {
 	return a
 }
 
-// GetSourceData - copy data from redis
+// CopyHMData - copy data from redis
 func (a *AppCtx) CopyHMData() *AppCtx {
 	if a.err != nil {
 		return a
@@ -98,16 +98,16 @@ func (a *AppCtx) CopyHMData() *AppCtx {
 		a.err = fmt.Errorf("CopyHMData: invalid data type %s", a.keyType)
 	}
 	// query source db
-	val, err := a.srcClient.HGetAll(a.ctx, a.key).Result()
-	if err != nil {
+	iter := a.srcClient.HScan(a.ctx, a.key, 0, "", 1000).Iterator()
+	if err := iter.Err(); err != nil {
 		a.err = fmt.Errorf("CopyRedisData: %v", err)
 		return a
 	}
 
-	// Create arguments: key field value [field value]...
 	var args = []interface{}{}
-	for k, v := range val {
-		args = append(args, k, v)
+	for iter.Next(a.ctx) {
+		val := iter.Val()
+		args = append(args, val)
 	}
 
 	// insert into dest
